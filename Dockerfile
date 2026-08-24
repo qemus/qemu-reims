@@ -124,6 +124,22 @@ RUN <<EOF_SOURCE
   test -s /tmp/reims-qemu.patch
   git -C reims/vendor/qemu-11.1 apply --check /tmp/reims-qemu.patch
   git -C reims/vendor/qemu-11.1 apply --index /tmp/reims-qemu.patch
+
+  # qemux uses QEMU's own display path (VNC/noVNC), so Reims' optional
+  # host-owned winit/X11/Wayland window is unnecessary. Keep the Vulkan backend
+  # itself, but fail loudly if upstream changes the exact Cargo feature line.
+  meson_file="reims/vendor/qemu-11.1/hw/display/meson.build"
+  old="reims_vgpu_cargo_features = '--no-default-features --features backend-vulkan,host-window'"
+  new="reims_vgpu_cargo_features = '--no-default-features --features backend-vulkan'"
+
+  count="$(grep -Fc "$old" "$meson_file" || true)"
+  if [ "$count" -ne 1 ]; then
+    echo "FAIL: expected exactly one Reims host-window Cargo feature line, found $count."
+    exit 1
+  fi
+
+  sed -i "s|$old|$new|" "$meson_file"
+  git -C reims/vendor/qemu-11.1 add hw/display/meson.build
   git -C reims/vendor/qemu-11.1 diff --cached --check
 
   # Make sure the port stayed in the intended x86/display integration surface.
