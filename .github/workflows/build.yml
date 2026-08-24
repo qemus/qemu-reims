@@ -66,6 +66,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha,scope=qemu-reims
+          cache-to: type=gha,mode=max,scope=qemu-reims
           build-args: |
             VERSION_ARG=${{ env.VERSION }}
       -
