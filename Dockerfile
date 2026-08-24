@@ -308,19 +308,38 @@ RUN <<'EOF_VERIFY'
 
   # Eager binding is intentionally only a publication-time compatibility test.
   # dockur/macOS does not need LD_BIND_NOW when it later copies this executable.
-  QEMU_MODULE_DIR=/nonexistent LD_BIND_NOW=1 "$binary" --version \
+  LD_BIND_NOW=1 "$binary" --version \
     | grep -F "QEMU emulator version 11.1.0"
 
-  QEMU_MODULE_DIR=/nonexistent LD_BIND_NOW=1 \
-    "$binary" -device reims-vgpu-pci,help >/tmp/reims-pci-help 2>&1
+  # Probe normal QEMU operation separately from eager ELF binding. The binary
+  # is built with QEMU modules disabled, so no QEMU_MODULE_DIR override is needed.
+  if ! "$binary" -device reims-vgpu-pci,help >/tmp/reims-pci-help 2>&1; then
+    cat /tmp/reims-pci-help
+    echo "FAIL: reims-vgpu-pci is not usable in the qemux/qemu runtime."
+    exit 1
+  fi
 
-  QEMU_MODULE_DIR=/nonexistent LD_BIND_NOW=1 \
-    "$binary" -display help >/tmp/display-help 2>&1
-  grep -F "vnc" /tmp/display-help
+  if ! "$binary" -display help >/tmp/display-help 2>&1; then
+    cat /tmp/display-help
+    echo "FAIL: QEMU display help failed in the qemux/qemu runtime."
+    exit 1
+  fi
+  grep -F "vnc" /tmp/display-help || {
+    cat /tmp/display-help
+    echo "FAIL: VNC display support is missing in the qemux/qemu runtime."
+    exit 1
+  }
 
-  QEMU_MODULE_DIR=/nonexistent LD_BIND_NOW=1 \
-    "$binary" -accel help >/tmp/accel-help 2>&1
-  grep -i "kvm" /tmp/accel-help
+  if ! "$binary" -accel help >/tmp/accel-help 2>&1; then
+    cat /tmp/accel-help
+    echo "FAIL: QEMU accelerator help failed in the qemux/qemu runtime."
+    exit 1
+  fi
+  grep -i "kvm" /tmp/accel-help || {
+    cat /tmp/accel-help
+    echo "FAIL: KVM acceleration is missing in the qemux/qemu runtime."
+    exit 1
+  }
 
   test -s "$rom"
 
