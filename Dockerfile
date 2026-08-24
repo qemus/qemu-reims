@@ -140,6 +140,32 @@ RUN <<EOF_SOURCE
 
   sed -i "s|$old|$new|" "$meson_file"
   git -C reims/vendor/qemu-11.1 add hw/display/meson.build
+
+  # Reims' queue-owner presentation helper uses a host-window-only type, but
+  # the helper itself is missing the matching feature guard upstream. Add the
+  # same guard as its caller so the Vulkan backend builds without host-window.
+  queue_owner="reims/crates/reims-vgpu/src/backend/vulkan/engine/queue_owner.rs"
+  old='    pub(crate) fn enqueue_present('
+
+  count="$(grep -Fxc "$old" "$queue_owner")"
+  if [ "$count" -ne 1 ]; then
+    echo "FAIL: expected exactly one unguarded Reims enqueue_present method, found $count."
+    exit 1
+  fi
+
+  already_guarded="$(awk '
+    prev == "    #[cfg(feature = \"host-window\")]" && $0 == "    pub(crate) fn enqueue_present(" { n++ }
+    { prev = $0 }
+    END { print n + 0 }
+  ' "$queue_owner")"
+  if [ "$already_guarded" -ne 0 ]; then
+    echo "FAIL: Reims enqueue_present already has a host-window feature guard."
+    exit 1
+  fi
+
+  sed -i '/^    pub(crate) fn enqueue_present($/i\    #[cfg(feature = "host-window")]' "$queue_owner"
+  git -C reims diff --check -- crates/reims-vgpu/src/backend/vulkan/engine/queue_owner.rs
+
   git -C reims/vendor/qemu-11.1 diff --cached --check
 
   # Make sure the port stayed in the intended x86/display integration surface.
