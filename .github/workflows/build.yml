@@ -36,7 +36,7 @@ jobs:
             type=raw,value=latest,priority=100
             type=raw,value=${{ env.VERSION }}
           labels: |
-            org.opencontainers.image.title=Helios
+            org.opencontainers.image.title=Reims
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest
       -
@@ -69,16 +69,19 @@ jobs:
           build-args: |
             VERSION_ARG=${{ env.VERSION }}
       -
-        name: Export binary
+        name: Export artifacts
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY}:${VERSION}"
           docker pull "$image"
           container="$(docker create "$image" true)"
           trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
           docker cp "$container:/usr/bin/qemu-system-x86_64" ./qemu-system-x86_64
+          docker cp "$container:/usr/share/qemu/reims-vgpu-gop.rom" ./reims-vgpu-gop.rom
           chmod 755 ./qemu-system-x86_64
+          chmod 644 ./reims-vgpu-gop.rom
           test -s ./qemu-system-x86_64
-          sha256sum ./qemu-system-x86_64
+          test -s ./reims-vgpu-gop.rom
+          sha256sum ./qemu-system-x86_64 ./reims-vgpu-gop.rom
       -
         name: Create a release
         uses: action-pack/github-release@v2
@@ -87,10 +90,14 @@ jobs:
           title: "v${{ env.VERSION }}"
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
-        name: Upload binary to release
+        name: Upload artifacts to release
         env:
           GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
-        run: gh release upload "v${VERSION}" ./qemu-system-x86_64 --clobber
+        run: |
+          gh release upload "v${VERSION}" \
+            ./qemu-system-x86_64 \
+            ./reims-vgpu-gop.rom \
+            --clobber
       -
         name: Increment version variable
         uses: action-pack/increment@v2
