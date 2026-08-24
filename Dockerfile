@@ -292,6 +292,10 @@ RUN <<'EOF_BUILD'
     --disable-hvf \
     --disable-install-blobs \
     --disable-jack \
+    --disable-af-xdp \
+    --disable-libcbor \
+    --disable-lzo \
+    --disable-snappy \
     --disable-libiscsi \
     --disable-libnfs \
     --disable-libssh \
