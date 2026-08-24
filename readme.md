@@ -7,7 +7,7 @@
 
 </div></h1>
 
-Drop-in QEMU build with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) support for hardware-accelerated macOS graphics.
+Custom QEMU build with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) support for hardware-accelerated macOS graphics.
 
 ## What is Reims? 🚀
 
