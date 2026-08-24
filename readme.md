@@ -62,5 +62,5 @@ Special thanks to [steelbrain](https://github.com/steelbrain), this project woul
 [release_url]: https://github.com/qemus/qemu-reims/releases/
 
 [Build]: https://github.com/qemus/qemu-reims/actions/workflows/build.yml/badge.svg
-[Size]: https://img.shields.io/badge/size-18.4_MB-steelblue?style=flat&color=066da5
+[Size]: https://img.shields.io/badge/size-41.7_MB-steelblue?style=flat&color=066da5
 [Version]: https://img.shields.io/github/v/tag/qemus/qemu-reims?label=version&sort=semver&color=066da5
