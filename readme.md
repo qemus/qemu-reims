@@ -45,10 +45,9 @@ Physical GPU
 ## Runtime requirements ⚙️
 
 - KVM acceleration.
-- A Vulkan 1.2 or newer host driver.
-- Access to the intended host GPU.
+- The Reims vGPU PCI device.
 - Shared memfd-backed guest RAM.
-- The Reims PCI device instead of a conventional emulated VGA adapter.
+- A Vulkan 1.2 or newer host driver.
 - The Reims GOP option ROM for EFI display output.
 
 ## Acknowledgements 🙏
