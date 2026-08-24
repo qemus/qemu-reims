@@ -6,6 +6,7 @@ ARG VERSION_ARG="0.0.0"
 ARG QEMU_VERSION="11.1.0"
 
 ARG QEMU_REF="84f07211cc5b4fc6a371559bf8a5de4fb068e648"
+ARG VMVGA_REF="7c13f144f4e2a2ad616c501397e0b7f6f04eb0aa"
 ARG REIMS_REF="2844274c34baa1043d37995f5b1a9f1d265eae03"
 ARG REIMS_QEMU_REF="e17ddb98f71df5697daf2f830587f672a8f4f5a7"
 ARG REIMS_QEMU_BASE="b83371668192a705b878e909c5ae9c1233cbd5fb"
@@ -188,6 +189,31 @@ RUN <<EOF_SOURCE
     exit 1
   fi
 
+  # Overlay the pinned enhanced VMware SVGA II implementation onto the same
+  # QEMU 11.1 source tree that contains the Reims integration. qemu-vmvga is
+  # source-only: its vmware_vga.c and VMware headers are compiled by QEMU.
+  git init qemu-vmvga
+  git -C qemu-vmvga remote add origin https://github.com/qemus/qemu-vmvga.git
+  git -C qemu-vmvga fetch --depth=1 origin "${VMVGA_REF}"
+  git -C qemu-vmvga checkout --detach FETCH_HEAD
+
+  actual="$(git -C qemu-vmvga rev-parse HEAD)"
+  if [ "$actual" != "${VMVGA_REF}" ]; then
+    echo "FAIL: qemu-vmvga resolved to $actual instead of ${VMVGA_REF}."
+    exit 1
+  fi
+
+  vmvga_source="qemu-vmvga/hw/display"
+  qemu_display="reims/vendor/qemu-11.1/hw/display"
+
+  test -f "$qemu_display/vmware_vga.c"
+  test -f "$vmvga_source/vmware_vga.c"
+  test -d "$vmvga_source/include"
+
+  install -m 0644 "$vmvga_source/vmware_vga.c" "$qemu_display/vmware_vga.c"
+  mkdir -p "$qemu_display/include"
+  cp -a "$vmvga_source/include/." "$qemu_display/include/"
+
   # Keep QEMU configure offline after source preparation. These Meson wraps are
   # needed by the same system-only build configuration used by qemus/qemu.
   meson subprojects download --sourcedir reims/vendor/qemu-11.1 \
@@ -317,6 +343,11 @@ RUN <<'EOF_BUILD'
 
   strings /out/qemu-system-x86_64 | grep -Fq '/usr/share/qemu' || {
     echo "FAIL: QEMU was not built with the /usr/share/qemu data path."
+    exit 1
+  }
+
+  strings /out/qemu-system-x86_64 | grep -Fq 'enhanced BAR1 dirty scanout active' || {
+    echo "FAIL: enhanced qemu-vmvga implementation is missing from the built QEMU binary."
     exit 1
   }
 
