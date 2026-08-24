@@ -7,7 +7,7 @@
 
 </div></h1>
 
-Custom QEMU build with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) support for hardware-accelerated macOS graphics.
+Custom QEMU build with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) support for hardware-accelerated macOS graphics and the enhanced [QEMU VMVGA](https://github.com/qemus/qemu-vmvga) VMware SVGA II implementation.
 
 ## What is Reims? 🚀
 
@@ -41,6 +41,12 @@ Host Vulkan driver
       ▼
 Physical GPU
 ```
+
+## VMware SVGA II support 🖥️
+
+This build also includes the enhanced [QEMU VMVGA](https://github.com/qemus/qemu-vmvga) implementation. It replaces QEMU's standard `vmware-svga` display-device source with broader VMware SVGA register, FIFO command, capability, cursor and display support, including newer VMware SVGA definitions.
+
+A compatible VMware SVGA guest driver is still required to use device-specific features.
 
 ## Runtime requirements ⚙️
 
