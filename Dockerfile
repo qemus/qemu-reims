@@ -319,14 +319,10 @@ RUN <<'EOF_VERIFY'
     exit 1
   fi
 
-  if ! "$binary" -display help >/tmp/display-help 2>&1; then
-    cat /tmp/display-help
-    echo "FAIL: QEMU display help failed in the qemux/qemu runtime."
-    exit 1
-  fi
-  grep -F "vnc" /tmp/display-help || {
-    cat /tmp/display-help
-    echo "FAIL: VNC display support is missing in the qemux/qemu runtime."
+  "$binary" -help >/tmp/qemu-help 2>&1
+  grep -F -- "-vnc " /tmp/qemu-help >/dev/null || {
+    cat /tmp/qemu-help
+    echo "FAIL: VNC server support is missing in the qemux/qemu runtime."
     exit 1
   }
 
