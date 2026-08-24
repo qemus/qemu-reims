@@ -191,74 +191,10 @@ RUN <<EOF_SOURCE
   test -d "$vmvga_source/include"
 
   install -m 0644 "$vmvga_source/vmware_vga.c" "$qemu_display/vmware_vga.c"
+  install -m 0644 "$vmvga_source/vmware_vga_compat.c" "$qemu_display/vmware_vga_compat.c"
+
   mkdir -p "$qemu_display/include"
   cp -a "$vmvga_source/include/." "$qemu_display/include/"
-
-  # qemu-vmvga currently uses several older QEMU source APIs. Adapt only the
-  # integration points that changed in QEMU 11.1, and fail hard if the pinned
-  # source no longer has exactly the expected form.
-  VMVGA_QEMU="$qemu_display/vmware_vga.c" python3 - <<'PY_VMVGA'
-from pathlib import Path
-import os
-
-path = Path(os.environ["VMVGA_QEMU"])
-text = path.read_text()
-
-replacements = [
-    (
-        '#include "qapi/error.h"\n',
-        '#include "qapi/error.h"\n'
-        '#include "qemu/module.h"\n'
-        '#include "qom/object.h"\n'
-        '#include "ui/console.h"\n',
-    ),
-    (
-        '#ifdef QEMU_V9_2_0\n'
-        '#include "hw/pci/pci_device.h"\n'
-        '#else\n'
-        '#include "hw/pci/pci.h"\n'
-        '#endif\n',
-        '#include "hw/pci/pci_device.h"\n',
-    ),
-    (
-        '#include "hw/qdev-properties.h"\n',
-        '#include "hw/core/qdev-properties.h"\n',
-    ),
-    (
-        'static void vmsvga_text_update(void *opaque, console_ch_t *chardata) {\n',
-        'static void vmsvga_text_update(void *opaque, uint32_t *chardata) {\n',
-    ),
-    (
-        '  s->vga.con = graphic_console_init(dev, 0, &vmsvga_ops, s);\n',
-        '  s->vga.con = qemu_graphic_console_create(dev, 0, &vmsvga_ops, s);\n',
-    ),
-    (
-        '#ifdef QEMU_V9_2_0\n'
-        '  vmstate_register_any(NULL, &vmstate_vga_common, &s->vga);\n'
-        '#else\n'
-        '  vmstate_register(NULL, 0, &vmstate_vga_common, &s->vga);\n'
-        '#endif\n',
-        '  vmstate_register_any(NULL, &vmstate_vga_common, &s->vga);\n',
-    ),
-    (
-        '    DEFINE_PROP_END_OF_LIST(),\n',
-        '',
-    ),
-]
-
-for old, new in replacements:
-    count = text.count(old)
-    if count != 1:
-        raise SystemExit(
-            f"FAIL: expected exactly one qemu-vmvga QEMU 11.1 compatibility "
-            f"match, found {count}: {old!r}"
-        )
-    text = text.replace(old, new, 1)
-
-path.write_text(text)
-PY_VMVGA
-
-  git -C reims/vendor/qemu-11.1 diff --check -- hw/display/vmware_vga.c
 
   # Keep QEMU configure offline after source preparation. These Meson wraps are
   # needed by the same system-only build configuration used by qemus/qemu.
