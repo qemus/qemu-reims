@@ -6,7 +6,6 @@ ARG VERSION_ARG="0.0.0"
 ARG QEMU_VERSION="11.1.0"
 
 ARG QEMU_REF="84f07211cc5b4fc6a371559bf8a5de4fb068e648"
-ARG VMVGA_REF="7c13f144f4e2a2ad616c501397e0b7f6f04eb0aa"
 ARG REIMS_REF="2844274c34baa1043d37995f5b1a9f1d265eae03"
 ARG REIMS_QEMU_REF="e17ddb98f71df5697daf2f830587f672a8f4f5a7"
 ARG REIMS_QEMU_BASE="b83371668192a705b878e909c5ae9c1233cbd5fb"
@@ -31,6 +30,62 @@ RUN <<EOF_BUILD_DEPS
 EOF_BUILD_DEPS
 
 WORKDIR /src
+
+# Track qemu-render master directly during development. BuildKit resolves the
+# branch head as part of this Git input, so a new qemu-render commit invalidates
+# the virglrenderer build layer below.
+ADD --keep-git-dir=true https://github.com/qemus/qemu-render.git#master /src/qemu-render
+
+# Build against the exact virglrenderer revision selected by the latest
+# qemu-render master so Reims and the qemu-render runtime stay on the same API.
+RUN <<EOF_VIRGL
+  set -eu
+
+  qemu_render_commit="$(git -C qemu-render rev-parse HEAD)"
+  count="$(grep -Ec '^ARG VIRGL_REF="[0-9a-f]{40}"$' qemu-render/Dockerfile || true)"
+  if [ "$count" -ne 1 ]; then
+    echo "FAIL: expected exactly one VIRGL_REF in qemu-render Dockerfile, found $count."
+    exit 1
+  fi
+
+  virgl_ref="$(sed -n 's/^ARG VIRGL_REF="\([0-9a-f]\{40\}\)"$/\1/p' qemu-render/Dockerfile)"
+
+  echo "Using qemu-render commit $qemu_render_commit"
+  echo "Using qemu-render virglrenderer commit $virgl_ref"
+
+  git init virglrenderer
+  git -C virglrenderer remote add origin https://gitlab.freedesktop.org/virgl/virglrenderer.git
+  git -C virglrenderer fetch --depth=1 origin "$virgl_ref"
+  git -C virglrenderer checkout --detach FETCH_HEAD
+
+  actual="$(git -C virglrenderer rev-parse HEAD)"
+  if [ "$actual" != "$virgl_ref" ]; then
+    echo "FAIL: virglrenderer resolved to $actual instead of $virgl_ref."
+    exit 1
+  fi
+
+  multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
+
+  meson setup /build-virgl /src/virglrenderer \
+    --buildtype=release \
+    --prefix=/usr/local \
+    --libdir="lib/${multiarch}" \
+    -Dplatforms=egl \
+    -Dvenus=true \
+    -Drender-server-worker=thread \
+    -Dunstable-apis=true \
+    -Dtests=false \
+    -Dvideo=false
+
+  meson compile -C /build-virgl
+  meson install -C /build-virgl
+  ldconfig
+EOF_VIRGL
+
+# Track qemu-vmvga master directly during development. BuildKit resolves the
+# branch head as part of this Git input, so a new VMVGA commit invalidates the
+# QEMU source/build layers below without rebuilding virglrenderer.
+ADD --keep-git-dir=true https://github.com/qemus/qemu-vmvga.git#master /src/qemu-vmvga
 
 RUN <<EOF_SOURCE
   set -eu
@@ -169,29 +224,21 @@ RUN <<EOF_SOURCE
     exit 1
   fi
 
-  # Overlay the pinned enhanced VMware SVGA II implementation onto the same
+  # Overlay the latest enhanced VMware SVGA II implementation onto the same
   # QEMU 11.1 source tree that contains the Reims integration. qemu-vmvga is
   # source-only: its vmware_vga.c and VMware headers are compiled by QEMU.
-  git init qemu-vmvga
-  git -C qemu-vmvga remote add origin https://github.com/qemus/qemu-vmvga.git
-  git -C qemu-vmvga fetch --depth=1 origin "${VMVGA_REF}"
-  git -C qemu-vmvga checkout --detach FETCH_HEAD
-
-  actual="$(git -C qemu-vmvga rev-parse HEAD)"
-  if [ "$actual" != "${VMVGA_REF}" ]; then
-    echo "FAIL: qemu-vmvga resolved to $actual instead of ${VMVGA_REF}."
-    exit 1
-  fi
+  vmvga_commit="$(git -C qemu-vmvga rev-parse HEAD)"
+  echo "Using qemu-vmvga commit $vmvga_commit"
 
   vmvga_source="qemu-vmvga/hw/display"
   qemu_display="reims/vendor/qemu-11.1/hw/display"
 
   test -f "$qemu_display/vmware_vga.c"
   test -f "$vmvga_source/vmware_vga.c"
+  test -f "$vmvga_source/include/vmware_vga_compat.h"
   test -d "$vmvga_source/include"
 
   install -m 0644 "$vmvga_source/vmware_vga.c" "$qemu_display/vmware_vga.c"
-  install -m 0644 "$vmvga_source/vmware_vga_compat.c" "$qemu_display/vmware_vga_compat.c"
 
   mkdir -p "$qemu_display/include"
   cp -a "$vmvga_source/include/." "$qemu_display/include/"
@@ -211,6 +258,8 @@ RUN <<'EOF_BUILD'
   cd /build
 
   multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
+  export PKG_CONFIG_PATH="/usr/local/lib/${multiarch}/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+  export LD_LIBRARY_PATH="/usr/local/lib/${multiarch}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   export DEB_CFLAGS_MAINT_APPEND="-ffile-prefix-map=/src/reims=."
 
   extra_cflags="$(dpkg-buildflags --get CFLAGS) $(dpkg-buildflags --get CPPFLAGS)"
