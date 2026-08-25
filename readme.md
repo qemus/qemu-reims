@@ -1,4 +1,4 @@
-<h1 align="center">Reims<br />
+<h1 align="center">QEMU Reims<br />
 <div align="center">
   
 [![Build]][build_url]
@@ -11,7 +11,7 @@ Custom QEMU build with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) su
 
 ## What is Reims? 🚀
 
-Reims is a paravirtualized GPU implementation for macOS guests. It exposes a virtual Apple-compatible GPU to macOS and uses the stock `AppleParavirtGPU.kext` already present in the guest, so no custom guest kernel extension is required.
+[Reims](https://github.com/steelbrain/reims-vgpu) is a paravirtualized GPU implementation for macOS guests. It exposes a virtual Apple-compatible GPU to macOS and uses the stock `AppleParavirtGPU.kext` already present in the guest, so no custom guest kernel extension is required.
 
 On the Linux host the macOS GPU command stream is decoded by Reims and executed through Vulkan on the host GPU. The physical GPU remains owned by Linux instead of being dedicated to the virtual machine through PCI passthrough.
 
