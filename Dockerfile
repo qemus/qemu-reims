@@ -31,10 +31,7 @@ EOF_BUILD_DEPS
 
 WORKDIR /src
 
-# Track qemu-render master directly during development. BuildKit resolves the
-# branch head as part of this Git input, so a new qemu-render commit invalidates
-# the virglrenderer build layer below.
-ADD --keep-git-dir=true https://github.com/qemus/qemu-render.git#master /src/qemu-render
+ADD --keep-git-dir=true https://github.com/qemus/qemu-render.git#v1.2.0 /src/qemu-render
 
 # Build against the exact virglrenderer revision selected by the latest
 # qemu-render master so Reims and the qemu-render runtime stay on the same API.
@@ -82,9 +79,6 @@ RUN <<EOF_VIRGL
   ldconfig
 EOF_VIRGL
 
-# Track qemu-vmvga master directly during development. BuildKit resolves the
-# branch head as part of this Git input, so a new VMVGA commit invalidates the
-# QEMU source/build layers below without rebuilding virglrenderer.
 ADD --keep-git-dir=true https://github.com/qemus/qemu-vmvga.git#master /src/qemu-vmvga
 
 RUN <<EOF_SOURCE
