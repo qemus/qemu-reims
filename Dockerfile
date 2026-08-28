@@ -369,7 +369,7 @@ RUN <<'EOF_BUILD'
     exit 1
   }
 
-  strings /out/qemu-system-x86_64 | grep -Fq 'enhanced BAR1 dirty scanout active' || {
+  strings /out/qemu-system-x86_64 | grep -Fq 'vmware-vga: BAR1 trace scanout active' || {
     echo "FAIL: enhanced qemu-vmvga implementation is missing from the built QEMU binary."
     exit 1
   }
