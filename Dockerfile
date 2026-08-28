@@ -227,13 +227,7 @@ RUN <<EOF_SOURCE
   vmvga_source="qemu-vmvga/hw/display"
   qemu_display="reims/vendor/qemu-11.1/hw/display"
 
-  test -f "$qemu_display/vmware_vga.c"
-  test -f "$vmvga_source/vmware_vga.c"
-  test -f "$vmvga_source/include/vmware_vga_compat.h"
-  test -d "$vmvga_source/include"
-
-  install -m 0644 "$vmvga_source/vmware_vga.c" "$qemu_display/vmware_vga.c"
-
+  cp -a "$vmvga_source"/*.c "$qemu_display/"
   mkdir -p "$qemu_display/include"
   cp -a "$vmvga_source/include/." "$qemu_display/include/"
 
