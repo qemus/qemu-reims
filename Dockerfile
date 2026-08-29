@@ -227,9 +227,7 @@ RUN <<EOF_SOURCE
   vmvga_source="qemu-vmvga/hw/display"
   qemu_display="reims/vendor/qemu-11.1/hw/display"
 
-  cp -a "$vmvga_source"/*.c "$qemu_display/"
-  mkdir -p "$qemu_display/include"
-  cp -a "$vmvga_source/include/." "$qemu_display/include/"
+  cp -a "$vmvga_source/." "$qemu_display/"
 
   # Keep QEMU configure offline after source preparation. These Meson wraps are
   # needed by the same system-only build configuration used by qemus/qemu.
