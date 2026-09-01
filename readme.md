@@ -52,7 +52,7 @@ Physical GPU
 
 ## VMware SVGA II support 🖥️
 
-This build also includes an enhanced [SVGA](https://github.com/qemus/qemu-vmvga) implementation to improve performance even when the Reims vGPU is disabled. It replaces QEMU's standard `vmware-svga` display-device source with broader VMware SVGA register, FIFO command, capability, cursor and display support.
+This build also includes an enhanced [SVGA](https://github.com/qemus/qemu-vmvga) implementation to improve performance even when the Reims vGPU is disabled. It adds a `vmware-svga` device with 2D acceleration and  Direct3D support.
 
 ## Acknowledgements 🙏
 
